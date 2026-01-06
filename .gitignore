@@ -1,6 +1,9 @@
 .DS_Store
 .env
 .python-version
+.idea
+.tool_cache
+output.json
 
 # Python-generated files
 __pycache__/

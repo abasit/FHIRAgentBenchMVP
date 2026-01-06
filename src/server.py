@@ -1,3 +1,5 @@
+import config
+
 import argparse
 import uvicorn
 
@@ -16,24 +18,32 @@ from executor import Executor
 def main():
     parser = argparse.ArgumentParser(description="Run the A2A agent.")
     parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to bind the server")
-    parser.add_argument("--port", type=int, default=9009, help="Port to bind the server")
+    parser.add_argument("--port", type=int, default=9001, help="Port to bind the server")
     parser.add_argument("--card-url", type=str, help="URL to advertise in the agent card")
     args = parser.parse_args()
 
-    # Fill in your agent card
-    # See: https://a2a-protocol.org/latest/tutorials/python/3-agent-skills-and-card/
-    
+    # Agent card config (unchanged)
     skill = AgentSkill(
-        id="",
-        name="",
-        description="",
-        tags=[],
-        examples=[]
+        id="fhir_agent_evaluator",
+        name="Evaluates FHIR agents",
+        description="Evaluates medical agents interacting with FHIR databases for clinical tasks",
+        tags=["clinical tasks", "medical agents", "fhir agent"],
+        examples=["""
+{
+  "participants": {
+    "purple_agent": "http://localhost:9002"
+  },
+  "config": {
+    "num_tasks": 5,
+  }
+}
+"""]
     )
 
+    # Start A2A server
     agent_card = AgentCard(
-        name="",
-        description="",
+        name="FHIR Agent Evaluator",
+        description="Evaluates medical agents interacting with FHIR databases for clinical tasks",
         url=args.card_url or f"http://{args.host}:{args.port}/",
         version='1.0.0',
         default_input_modes=['text'],

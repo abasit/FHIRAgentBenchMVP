@@ -1,0 +1,9 @@
+[green_agent]
+endpoint = "http://127.0.0.1:9001"
+
+[[participants]]
+role = "purple_agent"
+endpoint = "http://127.0.0.1:9002"
+
+[config]
+num_tasks = 2

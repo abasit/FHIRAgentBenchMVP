@@ -1,37 +1,28 @@
 # A2A Agent Template
 
-A minimal template for building [A2A (Agent-to-Agent)](https://a2a-protocol.org/latest/) green agents compatible with the [AgentBeats](https://agentbeats.dev) platform.
+A MVP for the FHIR-Agent-Bench evaluation, to test the AgentBeats submission system.
 
 ## Project Structure
 
 ```
 src/
-├─ server.py      # Server setup and agent card configuration
-├─ executor.py    # A2A request handling
-├─ agent.py       # Your agent implementation goes here
-└─ messenger.py   # A2A messaging utilities
+├─ fhiragentbench   # Code from FHIRAgentBench modified as needed
+├─ models.py        # Pydantic models
+├─ config.py        # Loads configuration variables from environment
+├─ server.py        # Server setup and agent card configuration
+├─ executor.py      # A2A request handling
+├─ agent.py         # Your agent implementation goes here
+└─ messenger.py     # A2A messaging utilities
 tests/
-└─ test_agent.py  # Agent tests
-Dockerfile        # Docker configuration
-pyproject.toml    # Python dependencies
+└─ test_agent.py    # Agent tests
+Dockerfile          # Docker configuration
+pyproject.toml      # Python dependencies
 .github/
 └─ workflows/
    └─ test-and-publish.yml # CI workflow
 ```
 
-## Getting Started
-
-1. **Create your repository** - Click "Use this template" to create your own repository from this template
-
-2. **Implement your agent** - Add your agent logic to [`src/agent.py`](src/agent.py)
-
-3. **Configure your agent card** - Fill in your agent's metadata (name, skills, description) in [`src/server.py`](src/server.py)
-
-4. **Write your tests** - Add custom tests for your agent in [`tests/test_agent.py`](tests/test_agent.py)
-
-For a concrete example of implementing a green agent using this template, see this [draft PR](https://github.com/RDI-Foundation/green-agent-template/pull/3).
-
-## Running Locally
+## Running and Testing Locally
 
 ```bash
 # Install dependencies
@@ -41,14 +32,22 @@ uv sync
 uv run src/server.py
 ```
 
+There is a launcher script included as launcher/client_cli.py.
+
+To run the scenario, make sure both green and purple agents are running. Then run
+```bash
+python -m launcher.client_cli scenario.toml output.json
+```
+This will use the scenario file scenario.toml and will save the results in output.json
+
 ## Running with Docker
 
 ```bash
 # Build the image
-docker build -t my-agent .
+docker build --platform linux/arm64 -t fhir-green-agent .
 
 # Run the container
-docker run -p 9009:9009 my-agent
+docker run --env-file .env -p 9001:9001 fhir-green-agent
 ```
 
 ## Testing
@@ -62,7 +61,7 @@ uv sync --extra test
 # Start your agent (uv or docker; see above)
 
 # Run tests against your running agent URL
-uv run pytest --agent-url http://localhost:9009
+uv run pytest --agent-url http://localhost:9001
 ```
 
 ## Publishing
