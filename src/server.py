@@ -1,5 +1,4 @@
 import logging
-import time
 
 import config
 
@@ -16,8 +15,6 @@ from a2a.types import (
 )
 
 from executor import Executor
-import fhiragentbench.tools.cache as cache_module
-from fhiragentbench.utils import check_tool_credentials
 
 
 logger = logging.getLogger("fhir_agent_evaluator")
@@ -47,22 +44,6 @@ def main():
 }
 """]
     )
-
-    max_retries = 10
-    delay_seconds = 10
-    for attempt in range(1, max_retries + 1):
-        try:
-            logger.info("Checking tool access...")
-            cache_module.CACHE_ENABLED = True
-            check_tool_credentials()
-            logger.info("Tool access verified...")
-            break
-        except Exception as e:
-            logger.warning(f"Attempt {attempt}/{max_retries} failed.")
-            if attempt == max_retries:
-                logger.error("Tool check failed after maximum retries. Exiting.")
-                raise
-            time.sleep(delay_seconds)
 
     # Start A2A server
     agent_card = AgentCard(

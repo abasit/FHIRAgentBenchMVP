@@ -12,12 +12,12 @@ from a2a.types import Message, TaskState, Part, TextPart, DataPart
 from a2a.utils import get_message_text, new_agent_text_message
 
 from messenger import Messenger
+import fhiragentbench.tools.cache as cache_module
 from fhiragentbench.tools import get_tool_definitions, get_tool
 from fhiragentbench.tools.request_tools import supported_types
-from fhiragentbench.utils import read_input_data, curate_input_dataset, parse_outputs
+from fhiragentbench.utils import read_input_data, curate_input_dataset, parse_outputs, check_tool_credentials
 from fhiragentbench.utils.evaluation_metrics import calculate_answer_metrics, calculate_retrieval_metrics
 from models import EvalRequest, FHIRAgentBenchResult, TaskResult, ConversationState
-
 
 logger = logging.getLogger("fhir_agent_evaluator")
 logger.setLevel(logging.INFO)
@@ -38,8 +38,6 @@ class Agent:
     required_roles: list[str] = ["purple_agent"]
     required_config_keys: list[str] = [] # All config is optional
 
-    # Tools to expose to the purple agent
-
     def __init__(self):
         self.messenger = Messenger()
         # Initialize other state here
@@ -48,6 +46,23 @@ class Agent:
         self._default_tasks_file = DEFAULT_TASKS_FILE
         self._default_max_iterations = DEFAULT_MAX_ITERATIONS
         self._default_num_tasks = DEFAULT_NUM_TASKS
+
+        max_retries = 10
+        delay_seconds = 10
+        for attempt in range(1, max_retries + 1):
+            try:
+                logger.info("Checking tool access...")
+                cache_module.CACHE_ENABLED = True
+                check_tool_credentials()
+                logger.info("Tool access verified...")
+                break
+            except Exception as e:
+                logger.warning(f"Attempt {attempt}/{max_retries} failed.")
+                if attempt == max_retries:
+                    logger.error("Tool check failed after maximum retries. Exiting.")
+                    raise Exception("Could not access FHIR database.")
+                time.sleep(delay_seconds)
+
 
     def validate_request(self, request: EvalRequest) -> tuple[bool, str]:
         missing_roles = set(self.required_roles) - set(request.participants.keys())
