@@ -47,23 +47,6 @@ class Agent:
         self._default_max_iterations = DEFAULT_MAX_ITERATIONS
         self._default_num_tasks = DEFAULT_NUM_TASKS
 
-        max_retries = 10
-        delay_seconds = 10
-        for attempt in range(1, max_retries + 1):
-            try:
-                logger.info("Checking tool access...")
-                cache_module.CACHE_ENABLED = True
-                check_tool_credentials()
-                logger.info("Tool access verified...")
-                break
-            except Exception as e:
-                logger.warning(f"Attempt {attempt}/{max_retries} failed.")
-                if attempt == max_retries:
-                    logger.error("Tool check failed after maximum retries. Exiting.")
-                    raise Exception("Could not access FHIR database.")
-                time.sleep(delay_seconds)
-
-
     def validate_request(self, request: EvalRequest) -> tuple[bool, str]:
         missing_roles = set(self.required_roles) - set(request.participants.keys())
         if missing_roles:
@@ -117,6 +100,22 @@ class Agent:
         )
 
         try:
+            max_retries = 10
+            delay_seconds = 10
+            for attempt in range(1, max_retries + 1):
+                try:
+                    logger.info("Checking tool access...")
+                    cache_module.CACHE_ENABLED = True
+                    check_tool_credentials()
+                    logger.info("Tool access verified...")
+                    break
+                except Exception as e:
+                    logger.warning(f"Attempt {attempt}/{max_retries} failed.")
+                    if attempt == max_retries:
+                        logger.error("Tool check failed after maximum retries. Exiting.")
+                        raise Exception("Could not access FHIR database.")
+                    time.sleep(delay_seconds)
+
             # Load tasks
             tasks_df = self._load_tasks(tasks_file, num_tasks)
             total_tasks = len(tasks_df)
