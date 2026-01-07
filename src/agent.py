@@ -4,16 +4,17 @@ import logging
 import os
 import time
 from typing import Any, Optional
+
+import pandas as pd
 from pydantic import ValidationError
 from a2a.server.tasks import TaskUpdater
 from a2a.types import Message, TaskState, Part, TextPart, DataPart
 from a2a.utils import get_message_text, new_agent_text_message
 
-import fhiragentbench.tools.cache as cache_module
 from messenger import Messenger
 from fhiragentbench.tools import get_tool_definitions, get_tool
 from fhiragentbench.tools.request_tools import supported_types
-from fhiragentbench.utils import read_input_data, curate_input_dataset, check_tool_credentials, parse_outputs
+from fhiragentbench.utils import read_input_data, curate_input_dataset, parse_outputs
 from fhiragentbench.utils.evaluation_metrics import calculate_answer_metrics, calculate_retrieval_metrics
 from models import EvalRequest, FHIRAgentBenchResult, TaskResult, ConversationState
 
@@ -47,9 +48,6 @@ class Agent:
         self._default_tasks_file = DEFAULT_TASKS_FILE
         self._default_max_iterations = DEFAULT_MAX_ITERATIONS
         self._default_num_tasks = DEFAULT_NUM_TASKS
-
-        # Task data (loaded during run_eval)
-        self.tasks_df = None
 
     def validate_request(self, request: EvalRequest) -> tuple[bool, str]:
         missing_roles = set(self.required_roles) - set(request.participants.keys())
@@ -104,24 +102,9 @@ class Agent:
         )
 
         try:
-            # Initialize tools
-            await updater.update_status(
-                TaskState.working,
-                new_agent_text_message("Checking tool access...")
-            )
-            logger.info("Checking tool access...")
-            cache_module.CACHE_ENABLED = True
-            check_tool_credentials()
-
-            await updater.update_status(
-                TaskState.working,
-                new_agent_text_message("Tool access verified...")
-            )
-            logger.info(f"Tool access verified...")
-
             # Load tasks
-            self._load_tasks(tasks_file, num_tasks)
-            total_tasks = len(self.tasks_df)
+            tasks_df = self._load_tasks(tasks_file, num_tasks)
+            total_tasks = len(tasks_df)
 
             await updater.update_status(
                 TaskState.working,
@@ -131,6 +114,7 @@ class Agent:
 
             # Run all tasks
             results_df = await self._run_all_tasks(
+                tasks_df=tasks_df,
                 purple_agent_url=purple_agent_url,
                 max_iterations=max_iterations,
                 updater=updater,
@@ -179,12 +163,12 @@ class Agent:
 
     async def _run_all_tasks(
             self,
+            tasks_df: pd.DataFrame,
             purple_agent_url: str,
             max_iterations: int,
             updater: TaskUpdater,
     ):
         """Run all tasks sequentially."""
-        tasks_df = self.tasks_df.copy()
         total_tasks = len(tasks_df)
 
         # Track progress
@@ -404,21 +388,24 @@ class Agent:
             error="max_iterations_reached",
         )
 
-    def _load_tasks(self, tasks_file: str, num_tasks: Optional[int]):
+    @staticmethod
+    def _load_tasks(tasks_file: str, num_tasks: Optional[int]):
         """Load tasks from file."""
-        self.tasks_df = read_input_data(tasks_file)
+        tasks_df = read_input_data(tasks_file)
 
         # Limit to subset if specified
         if num_tasks is not None:
-            self.tasks_df = self.tasks_df[:num_tasks].copy()
+            tasks_df = tasks_df[:num_tasks].copy()
 
         # Add columns for results
         for col in ["agent_answer", "agent_fhir_resources", "trace", "error", "usage"]:
-            self.tasks_df[col] = None
+            tasks_df[col] = None
 
         # Add question_with_context
-        all_inputs = curate_input_dataset(self.tasks_df, True)
-        self.tasks_df["question_with_context"] = all_inputs
+        all_inputs = curate_input_dataset(tasks_df, True)
+        tasks_df["question_with_context"] = all_inputs
+
+        return tasks_df
 
     @staticmethod
     def _build_task_prompt() -> str:
